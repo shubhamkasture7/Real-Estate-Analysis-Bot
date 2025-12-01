@@ -1,0 +1,244 @@
+/* Global background */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  background: radial-gradient(circle at top left, #e0ecff 0, #f5f7fb 40%, #e9f0ff 100%);
+}
+
+/* Layout wrapper */
+.app-bg {
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 32px 16px 96px;
+}
+
+.app-container {
+  width: 100%;
+  max-width: 1120px;
+}
+
+/* Top bar */
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #2454ff;
+  color: #fff;
+  padding: 14px 22px;
+  border-radius: 16px;
+  box-shadow: 0 12px 35px rgba(22, 74, 190, 0.35);
+}
+
+.top-title {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: #f0fff4;
+  color: #166534;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #16a34a;
+}
+
+/* Main card */
+.main-card {
+  margin-top: 26px;
+  background: #ffffff;
+  border-radius: 24px;
+  display: flex;
+  overflow: hidden;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12);
+}
+
+/* Left colored strip */
+.side-panel {
+  width: 150px;
+  background: linear-gradient(180deg, #c7d4ff, #e1e8ff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 12px;
+}
+
+.chat-bubble {
+  background: #1f2937;
+  color: #ffffff;
+  padding: 10px 16px;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.45);
+}
+
+/* Right content */
+.card-content {
+  flex: 1;
+  padding: 24px 28px 26px;
+}
+
+.card-section + .card-section {
+  margin-top: 20px;
+}
+
+.section-title {
+  font-size: 20px;
+  margin: 0 0 6px;
+  color: #111827;
+}
+
+.section-subtitle {
+  font-size: 15px;
+  margin: 0 0 10px;
+  color: #111827;
+}
+
+.summary-text {
+  margin: 0;
+  color: #4b5563;
+  line-height: 1.5;
+}
+
+.summary-placeholder {
+  margin: 4px 0 0;
+  color: #9ca3af;
+}
+
+/* Chart container */
+.chart-wrapper {
+  height: 220px;
+  padding: 8px 4px 0;
+}
+
+/* Table styling */
+.table-wrapper {
+  max-height: 220px;
+  overflow: auto;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+}
+
+.table-wrapper table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.table-wrapper thead {
+  background: #f3f4ff;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.table-wrapper th,
+.table-wrapper td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+/* Bottom query bar */
+.query-bar {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  width: min(800px, 90vw);
+  background: #ffffff;
+  border-radius: 999px;
+  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.22);
+  display: flex;
+  align-items: center;
+  padding: 8px 10px 8px 18px;
+  gap: 10px;
+}
+
+.query-bar input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  background: transparent;
+  color: #111827;
+}
+
+.query-bar input::placeholder {
+  color: #9ca3af;
+}
+
+.query-bar button {
+  border: none;
+  outline: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  cursor: pointer;
+  background: linear-gradient(135deg, #2563eb, #4f46e5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 20px;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.query-bar button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.query-bar button:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 25px rgba(37, 99, 235, 0.55);
+}
+
+.send-icon {
+  transform: translateX(1px);
+}
+
+/* Responsive tweaks */
+@media (max-width: 768px) {
+  .main-card {
+    flex-direction: column;
+  }
+
+  .side-panel {
+    width: 100%;
+    justify-content: flex-start;
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .card-content {
+    padding: 18px 18px 22px;
+  }
+
+  .top-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}
