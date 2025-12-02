@@ -1,86 +1,127 @@
 import os
 import logging
-import json
-from dotenv import load_dotenv
-import google.generativeai as genai
+from typing import Optional, List
 
-# Load environment variables
+from dotenv import load_dotenv
+from google import genai
+
+# Load .env locally; on Render, env vars are injected anyway.
 load_dotenv()
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def configure_genai():
-    """
-    Configures the global Gemini client.
-    """
-    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+_client: Optional[genai.Client] = None
 
+
+def _get_client() -> Optional[genai.Client]:
+    """
+    Create and cache a configured Gemini client.
+
+    Uses GEMINI_API_KEY or GOOGLE_API_KEY from environment.
+    Returns None if the client cannot be created.
+    """
+    global _client
+
+    if _client is not None:
+        return _client
+
+    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
     if not api_key:
-        logger.error("❌ No API key found. Please set GEMINI_API_KEY.")
-        return False
+        logger.warning("No Gemini API key found. Set GEMINI_API_KEY or GOOGLE_API_KEY.")
+        return None
 
     try:
-        # Standard SDK Configuration
-        genai.configure(api_key=api_key)
-        return True
+        _client = genai.Client(api_key=api_key)
+        logger.info("Gemini client initialized successfully.")
+        return _client
     except Exception as e:
-        logger.error(f"❌ Configuration failed: {e}")
-        return False
+        logger.error("Failed to create Gemini client: %s", e, exc_info=True)
+        _client = None
+        return None
+
+
+def _extract_text_from_response(response) -> Optional[str]:
+    """
+    Safely extract text from a Gemini response object WITHOUT using response.text,
+    which may throw if no Parts exist.
+    """
+    # 1) Preferred: candidates -> content -> parts -> text
+    try:
+        candidates = getattr(response, "candidates", []) or []
+        for cand in candidates:
+            content = getattr(cand, "content", None)
+            parts = getattr(content, "parts", None) if content else None
+            if not parts:
+                continue
+
+            texts: List[str] = []
+            for part in parts:
+                t = getattr(part, "text", None)
+                if t:
+                    texts.append(t)
+
+            if texts:
+                return " ".join(texts).strip()
+    except Exception as e:
+        logger.warning("Failed to parse candidates/parts: %s", e, exc_info=True)
+
+    # 2) Fallback: try content as a simple string if present
+    try:
+        cand0 = (getattr(response, "candidates", []) or [None])[0]
+        if cand0:
+            content = getattr(cand0, "content", None)
+            if content:
+                maybe_text = getattr(content, "text", None) or getattr(
+                    content, "value", None
+                )
+                if isinstance(maybe_text, str) and maybe_text.strip():
+                    return maybe_text.strip()
+    except Exception:
+        pass
+
+    # No usable text found
+    return None
+
 
 def generate_summary_with_gemini(prompt: str) -> str:
     """
-    Generate a summary using Gemini 1.5 Flash.
+    Generate a short real-estate summary using Gemini.
+
+    - Uses gemini-2.5-flash
+    - Returns a safe mock summary if the client is unavailable, filtered,
+      or if any error occurs, so that the Django API never crashes.
     """
-    if not configure_genai():
-        return "Error: API Key configuration failed."
+    client = _get_client()
+    if client is None:
+        return "(Mock Summary: Gemini unavailable) " + prompt[:250]
 
     try:
-        # Initialize the model (Standard SDK)
-        # 'gemini-2.5-flash' is the safest, most widely available alias
-        model = genai.GenerativeModel('gemini-2.5-flash')
-
-        # Generate content
-        response = model.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
-                temperature=0.7,
-                max_output_tokens=500
-            )
+        # SIMPLE call: no generation_config / safety_settings,
+        # to be compatible with your current google-genai version
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
         )
 
-        # Extract text safely
-        if response.text:
-            return response.text.strip()
-        else:
-            return "Error: Empty response (Safety filter may have blocked content)."
+        text = _extract_text_from_response(response)
+
+        if not text:
+            # Log finish reasons for debugging but keep response stable
+            try:
+                frs = [
+                    getattr(c, "finish_reason", None)
+                    for c in (getattr(response, "candidates", []) or [])
+                ]
+                logger.warning(
+                    "Gemini returned empty or filtered result. finish_reasons=%s",
+                    frs,
+                )
+            except Exception:
+                logger.warning("Gemini returned empty or filtered result.")
+            return "(Mock Summary: Gemini safety filtered text) " + prompt[:250]
+
+        return text
 
     except Exception as e:
-        logger.error(f"❌ Gemini API Call Failed: {e}")
-        
-        # specific handling for the 404 error if it persists
-        if "404" in str(e):
-            return "Error: Model not found. Check out if your API Key supports Gemini 2.5 Flash."
-            
-        return f"Error processing request: {str(e)}"
-
-# --- Test Block with your Data ---
-if __name__ == "__main__":
-    # Simulate the data you provided in the prompt
-    data_context = {
-        "summary_request": "Analyze this real estate data for Wakad, Pune.",
-        "table": [
-            {"year": 2022, "flat_rate": 9734, "total_sold": 6944},
-            {"year": 2023, "flat_rate": 9959, "total_sold": 5484},
-            {"year": 2024, "flat_rate": 10277, "total_sold": 3760}
-        ]
-    }
-    
-    # Convert dict to string for the prompt
-    prompt_str = f"Summarize the trends in this data: {json.dumps(data_context)}"
-    
-    print("Sending request to Gemini...")
-    result = generate_summary_with_gemini(prompt_str)
-    print("\n--- Result ---")
-    print(result)
+        logger.error("Gemini API failure: %s", e, exc_info=True)
+        return "(Mock Summary: Gemini call failed) " + prompt[:250]
